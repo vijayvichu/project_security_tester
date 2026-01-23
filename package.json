@@ -1,0 +1,29 @@
+{
+  "name": "security-scanner",
+  "version": "1.0.0",
+  "description": "Security scanning tool for detecting SQL injection, DDoS attacks, and malicious IPs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "security",
+    "scanner",
+    "sql-injection",
+    "ddos"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "autocannon": "^8.0.0",
+    "axios": "^1.13.2",
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "type": "commonjs"
+}
