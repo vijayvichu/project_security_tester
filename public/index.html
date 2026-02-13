@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRR | Vulnerability Scanner</title>
+    <title>CYBERSCAN | Vulnerability Scanner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Roboto+Mono:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --neon-blue: #00f0ff;
             --neon-purple: #b300ff;
-            --dark-bg: #0a0a12;
+            --dark-bg: #05051d;
         }
         body {
             font-family: 'Roboto Mono', monospace;
             background-color: var(--dark-bg);
-            color: #011f29;
+            color: white;
         }
         .cyber-border {
             border: 1px solid var(--neon-blue);
@@ -60,10 +60,22 @@
             50% { opacity: 0.7; }
             100% { opacity: 1; }
         }
+        .threat-high {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid #ef4444;
+        }
+        .threat-medium {
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 4px solid #f59e0b;
+        }
+        .threat-low {
+            background: rgba(34, 197, 94, 0.2);
+            border-left: 4px solid #22c55e;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
-    <div class="max-w-6xl mx-auto">
+    <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <header class="mb-10 text-center">
             <h1 class="text-4xl md:text-6xl font-bold mb-2 cyber-glow" style="font-family: 'Orbitron', sans-serif;">
@@ -129,6 +141,16 @@
                 <div class="cyber-border rounded-lg p-4 h-64 overflow-auto">
                     <pre id="output" class="text-green-400 font-mono text-sm"></pre>
                 </div>
+                
+                <!-- Preventive Measures Display -->
+                <div id="prevention-display" class="mt-4 hidden">
+                    <div class="cyber-panel rounded-lg p-4 border border-cyan-500/30">
+                        <h3 class="text-lg font-bold text-cyan-300 mb-3" style="font-family: 'Orbitron', sans-serif;">
+                            <i class="fas fa-shield-alt mr-2"></i>PREVENTIVE MEASURES
+                        </h3>
+                        <div id="prevention-content" class="space-y-3"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Status Panel -->
@@ -189,10 +211,105 @@
                             <button onclick="clearRecentAndReload()" class="cyber-btn py-2 px-3 rounded-lg text-sm">Clear & Refresh</button>
                             <button onclick="restoreRecentAndReload()" class="cyber-btn py-2 px-3 rounded-lg text-sm" style="background:linear-gradient(45deg,#222,#555);color:#fff">Restore Defaults</button>
                         </div>
+                        
+                        <div class="mt-3 pt-4 border-t border-cyan-900">
+                            <h3 class="text-lg font-bold text-purple-300 mb-3"><i class="fas fa-chart-pie mr-2"></i>Vulnerability Chart</h3>
+                            <div class="flex items-center">
+                                <div id="vuln-chart-container" class="w-40 h-40 cyber-panel rounded-lg p-2">
+                                    <canvas id="vulnChart"></canvas>
+                                </div>
+                                <div class="ml-4">
+                                    <div id="testTypeLabel" class="text-xs text-cyan-400 mb-1">-</div>
+                                    <div id="vulnPercent" class="text-3xl font-bold text-red-400">0%</div>
+                                    <div class="text-sm text-cyan-200">Vulnerability Score</div>
+                                    <div id="severityLabel" class="text-xs font-bold mt-1">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Detailed Test Results -->
+                        <div id="test-results-section" class="mt-4 pt-4 border-t border-cyan-900 hidden">
+                            <h4 class="text-sm font-bold text-cyan-300 mb-2"><i class="fas fa-list-alt mr-1"></i> Test Results</h4>
+                            <div id="test-results-metrics" class="text-xs text-gray-400 space-y-1"></div>
+                        </div>
+                        
+                        <!-- SQL Prevention Tips -->
+                        <div id="sql-prevention-section" class="mt-4 pt-4 border-t border-cyan-900 hidden">
+                            <h4 class="text-sm font-bold text-cyan-300 mb-2"><i class="fas fa-shield-alt mr-1"></i> Prevention Recommendations</h4>
+                            <div id="sql-prevention-list" class="space-y-2"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
+
+        <!-- IP Logs Section -->
+        <section id="ip-logs-section" class="mt-8 cyber-panel rounded-lg p-6 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-cyan-300" style="font-family: 'Orbitron', sans-serif;">
+                    <i class="fas fa-history mr-2"></i> IP LOGS
+                </h2>
+                <div class="flex space-x-2">
+                    <button onclick="fetchMaliciousIPs()" class="cyber-btn py-2 px-4 rounded-lg">
+                        <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    </button>
+                    <button onclick="closeIPLogs()" class="cyber-btn py-2 px-4 rounded-lg" style="background:linear-gradient(45deg,#222,#555);">
+                        <i class="fas fa-times mr-2"></i> Close
+                    </button>
+                </div>
+            </div>
+            
+            <div id="ip-logs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- IP logs will be displayed here -->
+            </div>
+        </section>
+
+        <!-- Detected Malicious IPs Section -->
+        <section class="mt-8 cyber-panel rounded-lg p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-cyan-300" style="font-family: 'Orbitron', sans-serif;">
+                    <i class="fas fa-skull-crossbones mr-2"></i> DETECTED MALICIOUS IPs
+                </h2>
+                <button onclick="fetchDetectedMaliciousIPs()" class="cyber-btn py-2 px-4 rounded-lg">
+                    <i class="fas fa-sync-alt mr-2"></i> Refresh
+                </button>
+            </div>
+            
+            <div id="malicious-ips-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Malicious IPs will be displayed here -->
+                <div class="text-center text-gray-400 col-span-full py-8">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Click "ML Analysis" or "Refresh" to detect malicious IPs
+                </div>
+            </div>
+            
+            <div id="ml-summary" class="mt-4 p-4 cyber-border rounded-lg hidden">
+                <div class="flex justify-between text-sm">
+                    <span class="text-cyan-200">IPs Analyzed: <span id="total-analyzed" class="text-white font-bold">0</span></span>
+                    <span class="text-cyan-200">Malicious Detected: <span id="malicious-count" class="text-red-400 font-bold">0</span></span>
+                </div>
+            </div>
+            
+            <!-- Functionality Descriptions -->
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="bg-gray-800/30 rounded-lg p-4 border border-cyan-900/30">
+                    <h4 class="text-cyan-300 font-bold mb-2"><i class="fas fa-database mr-2"></i>SQL Injection Scanner</h4>
+                    <p class="text-gray-400">Detects SQL injection vulnerabilities in web applications by testing input fields with malicious SQL queries. Helps prevent database breaches and unauthorized access.</p>
+                </div>
+                <div class="bg-gray-800/30 rounded-lg p-4 border border-cyan-900/30">
+                    <h4 class="text-cyan-300 font-bold mb-2"><i class="fas fa-shield-alt mr-2"></i>DDoS Protection Test</h4>
+                    <p class="text-gray-400">Simulates distributed denial-of-service attacks to measure your application resilience under high traffic load. Provides vulnerability scoring and mitigation recommendations.</p>
+                </div>
+                <div class="bg-gray-800/30 rounded-lg p-4 border border-cyan-900/30">
+                    <h4 class="text-cyan-300 font-bold mb-2"><i class="fas fa-history mr-2"></i>IP Logging System</h4>
+                    <p class="text-gray-400">Records and displays malicious IP addresses detected during scans. Uses MySQL database for persistent storage of threat intelligence data.</p>
+                </div>
+                <div class="bg-gray-800/30 rounded-lg p-4 border border-cyan-900/30">
+                    <h4 class="text-cyan-300 font-bold mb-2"><i class="fas fa-brain mr-2"></i>ML Anomaly Detection</h4>
+                    <p class="text-gray-400">Machine learning-powered analysis identifies suspicious patterns and anomalies in network traffic. Detects zero-day threats and behavioral anomalies with automated threat scoring.</p>
+                </div>
+            </div>
+        </section>
 
         <!-- Footer -->
         <footer class="mt-12 text-center text-sm text-cyan-300 opacity-70">
@@ -207,6 +324,8 @@
 
     <!-- Font Awesome -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- App JS -->
     <script>
@@ -228,9 +347,23 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ url })
                 });
-                out(await res.json());
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    out({ error: `Server error: ${res.status} ${res.statusText}`, details: errorText });
+                    return;
+                }
+                
+                const data = await res.json();
+                out(data);
+                if (typeof updateVulnChart === 'function') {
+                    updateVulnChart(data, 'sql');
+                }
+                if (typeof displayPreventiveMeasures === 'function') {
+                    displayPreventiveMeasures(data, 'sql');
+                }
             } catch (err) {
-                out({ error: err.message });
+                out({ error: `Failed to connect: ${err.message}. Make sure the server is running.` });
             }
         }
 
@@ -247,28 +380,146 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ url })
                 });
-                out(await res.json());
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    out({ error: `Server error: ${res.status} ${res.statusText}`, details: errorText });
+                    return;
+                }
+                
+                const data = await res.json();
+                out(data);
+                if (typeof updateVulnChart === 'function') {
+                    updateVulnChart(data, 'ddos');
+                }
+                if (typeof displayPreventiveMeasures === 'function') {
+                    displayPreventiveMeasures(data, 'ddos');
+                }
             } catch (err) {
-                out({ error: err.message });
+                out({ error: `Failed to connect: ${err.message}. Make sure the server is running.` });
             }
         }
 
         async function fetchMaliciousIPs() {
             try {
                 const res = await fetch("/malicious-ips");
-                out(await res.json());
+                const data = await res.json();
+                
+                // Show the IP logs section
+                document.getElementById("ip-logs-section").classList.remove("hidden");
+                
+                // Display IP logs in the dedicated container
+                displayIPLogs(data);
+                
+                // Also show in output area
+                out(data);
             } catch (err) {
                 out({ error: err.message });
             }
         }
 
+        function displayIPLogs(data) {
+            const container = document.getElementById("ip-logs-container");
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 col-span-full py-8"><i class="fas fa-info-circle text-cyan-400 text-4xl mb-2"></i><p>No IP logs found</p></div>';
+                return;
+            }
+            
+            const html = data.map((log, index) => {
+                const ip = log.ip_address || log.ip;
+                const timestamp = log.detected_at || log.timestamp;
+                const id = log.id || index + 1;
+                return '<div class="bg-gray-800/50 rounded-lg p-4 border border-cyan-900/50"><div class="flex justify-between items-center mb-2"><span class="font-mono font-bold text-lg text-cyan-300">' + ip + '</span><span class="px-2 py-1 bg-purple-900/50 text-purple-300 text-xs rounded">ID: ' + id + '</span></div><div class="text-sm text-gray-400"><div><span class="text-cyan-200">Detected:</span> ' + (timestamp || 'N/A') + '</div></div></div>';
+            }).join('');
+            container.innerHTML = html;
+        }
+
+        function closeIPLogs() {
+            document.getElementById("ip-logs-section").classList.add("hidden");
+        }
+
         async function runML() {
+            const url = document.getElementById("url").value;
+            
+            // Show loading state
+            out({ loading: "Running ML analysis..." });
+            
             try {
-                const res = await fetch("/analyze/anomalies");
-                out(await res.json());
+                // First, run the ML analysis for the URL (POST request)
+                if (url && url.trim() !== '') {
+                    const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+                    if (urlPattern.test(url)) {
+                        await fetch("/analyze/anomalies", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ url })
+                        });
+                    }
+                }
+                
+                // Fetch accurate ML analysis results using GET endpoint
+                const res = await fetch("/detected-malicious-ips");
+                const data = await res.json();
+                
+                out(data);
+                
+                // Update the malicious IPs display
+                displayMaliciousIPs(data);
             } catch (err) {
                 out({ error: err.message });
             }
+        }
+
+        async function fetchDetectedMaliciousIPs() {
+            try {
+                const res = await fetch("/detected-malicious-ips");
+                const data = await res.json();
+                displayMaliciousIPs(data);
+                out(data);
+            } catch (err) {
+                out({ error: err.message });
+            }
+        }
+
+        function displayMaliciousIPs(data) {
+            const container = document.getElementById("malicious-ips-container");
+            const summary = document.getElementById("ml-summary");
+            
+            // Show summary
+            if (summary) {
+                summary.classList.remove("hidden");
+                document.getElementById("total-analyzed").textContent = data.totalAnalyzed || 0;
+                document.getElementById("malicious-count").textContent = data.anomaliesDetected || data.maliciousIPs?.length || 0;
+            }
+            
+            const maliciousIPs = data.maliciousIPs || data.anomalies || [];
+            
+            if (maliciousIPs.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 col-span-full py-8"><i class="fas fa-check-circle text-green-400 text-4xl mb-2"></i><p>No malicious IPs detected</p></div>';
+                return;
+            }
+            
+            container.innerHTML = maliciousIPs.map(ipData => {
+                const ip = ipData.ip || ipData;
+                const score = ipData.score !== undefined ? Math.abs(ipData.score) : 0;
+                const count = ipData.count || 0;
+                const rpm = ipData.rpm || 0;
+                const reasons = ipData.reasons || [];
+                const threatLevel = score > 0.8 ? 'high' : score > 0.5 ? 'medium' : 'low';
+                const threatLabel = score > 0.8 ? 'HIGH' : score > 0.5 ? 'MEDIUM' : 'LOW';
+                
+                let html = '<div class="threat-' + threatLevel + ' rounded-lg p-4"><div class="flex justify-between items-center mb-2"><span class="font-mono font-bold text-lg">' + ip + '</span><span class="px-2 py-1 rounded text-xs font-bold ' + (score > 0.8 ? 'bg-red-600 text-white' : score > 0.5 ? 'bg-yellow-600 text-white' : 'bg-green-600 text-white') + '">' + threatLabel + '</span></div><div class="text-sm text-gray-300 space-y-1"><div><span class="text-cyan-200">Score:</span> ' + (score * 100).toFixed(1) + '%</div><div><span class="text-cyan-200">Requests:</span> ' + count + '</div><div><span class="text-cyan-200">RPM:</span> ' + (rpm ? rpm.toFixed(1) : 'N/A') + '</div></div>';
+                
+                if (reasons.length > 0) {
+                    html += '<div class="mt-3 pt-2 border-t border-gray-600"><div class="text-xs text-gray-400 mb-1">Reasons:</div><div class="flex flex-wrap gap-1">';
+                    html += reasons.map(r => '<span class="px-2 py-0.5 bg-red-900/50 text-red-300 text-xs rounded">' + r + '</span>').join('');
+                    html += '</div></div>';
+                }
+                
+                html += '</div>';
+                return html;
+            }).join('');
         }
 
         // Clear recent threats (client + server) and reload; uses localStorage to persist cleared state
@@ -281,14 +532,12 @@
                 if (!res.ok) {
                     const body = await res.json().catch(() => ({}));
                     console.warn('Server delete failed', body);
-                    // continue to clear client view even if server delete fails
                 }
             } catch (err) {
                 console.warn('Failed to call server delete:', err.message);
             }
 
             localStorage.setItem('recentCleared', '1');
-            // give a small delay so the storage write happens before reload
             setTimeout(() => location.reload(), 100);
         }
 
@@ -301,35 +550,139 @@
         // On load, if the user cleared recent entries, hide them
         document.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('recentCleared') === '1') {
-                const container = document.getElementById('recent-threats-list');
+                const container = document.getElementById("recent-threats-list");
                 if (container) {
                     container.innerHTML = '<div class="text-sm text-cyan-200">No recent threats</div>';
                 }
             }
+            initVulnChart();
         });
+
+        // Vulnerability chart handling
+        let vulnChart = null;
+        function initVulnChart() {
+            const canvas = document.getElementById('vulnChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            vulnChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Vulnerable', 'Safe'],
+                    datasets: [{ data: [0, 100], backgroundColor: ['#95a5a6', '#2ecc71'] }]
+                },
+                options: { 
+                    cutout: '60%',
+                    plugins: { legend: { position: 'bottom', labels: { color: '#c9f9ff', font: { size: 10 } } } },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+            const percentEl = document.getElementById('vulnPercent');
+            if (percentEl) percentEl.textContent = '0%';
+        }
+
+        function updateVulnChart(vulnerability, summary) {
+            const score = Math.max(0, Math.min(100, Number(vulnerability?.score || 0)));
+            const safe = 100 - score;
+            const level = vulnerability?.level || 'UNKNOWN';
+            
+            const levelColors = {
+                CRITICAL: '#e74c3c',
+                HIGH: '#e67e22',
+                MEDIUM: '#f1c40f',
+                LOW: '#3498db',
+                MINIMAL: '#2ecc71',
+                UNKNOWN: '#95a5a6',
+            };
+            const chartColor = levelColors[level] || levelColors.UNKNOWN;
+            
+            if (vulnChart) {
+                vulnChart.data.datasets[0].data = [score, safe];
+                vulnChart.data.datasets[0].backgroundColor = [chartColor, '#2ecc71'];
+                vulnChart.update();
+            }
+            
+            const percentEl = document.getElementById('vulnPercent');
+            if (percentEl) {
+                percentEl.textContent = score + '%';
+                percentEl.style.color = chartColor;
+            }
+            
+            if (vulnerability) {
+                out({
+                    vulnerability: {
+                        score: vulnerability.score,
+                        level: vulnerability.level,
+                        components: vulnerability.components
+                    },
+                    summary: summary
+                });
+            }
+        }
+        
+        function displayPreventiveMeasures(data, testType) {
+            const displaySection = document.getElementById('prevention-display');
+            const contentDiv = document.getElementById('prevention-content');
+            
+            if (!displaySection || !contentDiv) return;
+            
+            // Check if preventive measures exist
+            if (!data || (!data.preventiveMeasures && !data.preventionTips)) {
+                displaySection.classList.add('hidden');
+                return;
+            }
+            
+            displaySection.classList.remove('hidden');
+            let html = '';
+            
+            if (data.preventiveMeasures) {
+                const pm = data.preventiveMeasures;
+                const testLabel = testType === 'sql' ? 'SQL Injection Prevention' : 'DDoS Mitigation';
+                
+                html = `
+                    <div class="mb-4 p-4 bg-gray-800/50 rounded-lg border border-cyan-500/30">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-lg font-bold text-cyan-300">${pm.title || testLabel}</h4>
+                            <span class="px-3 py-1 text-xs font-bold rounded ${
+                                pm.severityLevel === 'CRITICAL' ? 'bg-red-900 text-red-300' : 
+                                pm.severityLevel === 'HIGH' ? 'bg-orange-900 text-orange-300' :
+                                pm.severityLevel === 'MEDIUM' ? 'bg-yellow-900 text-yellow-300' :
+                                'bg-green-900 text-green-300'
+                            }">${pm.severityLevel || 'Unknown'}</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mb-3">OWASP: ${pm.owasp || 'N/A'}</p>
+                    </div>
+                `;
+                
+                const measures = pm.measures || [];
+                if (measures.length > 0) {
+                    html += '<div class="space-y-3">';
+                    measures.forEach((measure, idx) => {
+                        html += `
+                            <div class="bg-gray-800/30 rounded-lg p-4 border border-cyan-900/30">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="font-bold text-cyan-300">${idx + 1}. ${measure.category}</span>
+                                    <span class="px-2 py-1 text-xs rounded ${
+                                        measure.priority === 'HIGHEST' ? 'bg-red-900 text-red-300' : 
+                                        measure.priority === 'HIGH' ? 'bg-orange-900 text-orange-300' :
+                                        measure.priority === 'MEDIUM' ? 'bg-yellow-900 text-yellow-300' :
+                                        'bg-green-900 text-green-300'
+                                    }">${measure.priority}</span>
+                                </div>
+                                <p class="text-sm text-gray-300 mb-2">${measure.description || ''}</p>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                } else {
+                    html += '<p class="text-gray-400 text-sm">No specific measures needed for this scan.</p>';
+                }
+            } else if (data.preventionTips) {
+                html = '<ul class="space-y-2">' + data.preventionTips.map(tip => `<li class="text-gray-300">${tip}</li>`).join('') + '</ul>';
+            }
+            
+            contentDiv.innerHTML = html;
+        }
     </script>
-</body>
-</html>
-html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Website Vulnerability Scanner</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-
-<h1>Web Vulnerability Scanner</h1>
-
-<input type="text" id="url" placeholder="Enter website URL" />
-<button onclick="runSQLTest()">Test SQL Injection</button>
-<button onclick="runDDOSTest()">Simulate DDoS</button>
-<button onclick="fetchMaliciousIPs()">Show Malicious IPs</button>
-<button onclick="runML()">Run ML Anomaly Detection</button>
-
-<pre id="output"></pre>
-
-<script src="app.js"></script>
-
 </body>
 </html>

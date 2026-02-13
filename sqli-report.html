@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SQLi Test Report - undefined</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; line-height: 1.6; }
+    h1, h2 { color: #c1121f; }
+    .score { font-size: 3rem; font-weight: bold; }
+    .critical { color: #c1121f; } .high { color: #d97706; }
+    .medium { color: #ca8a04; } .low { color: #059669; }
+    table { border-collapse: collapse; width: 100%; margin: 1.5rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.6rem; text-align: left; }
+    th { background: #f1f5f9; }
+    .suspicious { background: #fee2e2; }
+  </style>
+</head>
+<body>
+  <h1>SQL Injection Test Report</h1>
+  <p>Target: <strong>undefined</strong></p>
+  <p class="score unknown">
+    Vulnerability Score: 0/100 — Unknown
+  </p>
+
+  <h2>Detection Pie Chart</h2>
+  <canvas id="vulnChart" width="400" height="400"></canvas>
+
+  <h2>Prevention Recommendations</h2>
+  <ul>
+    
+  </ul>
+
+  <h2>Detailed Results</h2>
+  <table>
+    <tr>
+      <th>Payload</th>
+      <th>Status</th>
+      <th>Length</th>
+      <th>Delay (ms)</th>
+      <th>Suspicious?</th>
+      <th>Reason</th>
+    </tr>
+    
+  </table>
+
+  <script>
+    const ctx = document.getElementById('vulnChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['No signs', 'Error-based', 'Time-based', 'Boolean-based'],
+        datasets: [{
+          data: [
+            100,
+            0,
+            0,
+            0
+          ],
+          backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } }
+      }
+    });
+  </script>
+</body>
+</html>
+  
