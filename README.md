@@ -1,30 +1,35 @@
-# VULN AI Web Scanner
+# Vuln AI Web Scanner
 
-Project Security Tester is a local security assessment dashboard for authorized testing. It provides controlled DDoS/load testing and SQL injection checks through a FastAPI web interface.
+A **local security assessment dashboard** for authorized penetration testing and vulnerability scanning. This tool provides a user-friendly web interface to perform SQL Injection vulnerability detection and DDoS/stress testing on web applications.
 
-## Components
+## 🎯 What It Does
 
-- `pentest_tool/`: FastAPI dashboard and Python scanners.
-- `SECURITY.md`: Vulnerability reporting and credential-handling policy.
-- `SECURITY_REPORT.md`: Security review findings and remediation status.
+Project Security Tester enables authorized security professionals and developers to:
 
-## Run the FastAPI dashboard
+- **SQL Injection (SQLi) Detection**: Automatically scan web applications for SQL injection vulnerabilities by testing form inputs and URL parameters with crafted payloads
+- **DDoS/Stress Testing**: Evaluate web server resilience and performance under high-concurrency load with configurable attack parameters
+- **Real-Time Monitoring**: Watch scan progress and test results in real-time through a responsive web dashboard
+- **Detailed Reporting**: Generate comprehensive logs and vulnerability reports from each security assessment
 
-From the repository root:
+## ⚙️ Components
 
-```powershell
-cd pentest_tool
-..\.venv\Scripts\python.exe -m uvicorn app:app --host 0.0.0.0 --port 9000 --reload
-```
+- **`pentest_tool/`** — FastAPI-based web dashboard and Python security scanning modules
+  - `app.py` — Main FastAPI application serving the dashboard UI and API endpoints
+  - `attacker/` — Core scanning engines (SQLi detector and DDoS simulator)
+  - `templates/` — HTML/CSS/JavaScript frontend interface
+- **`SECURITY.md`** — Vulnerability reporting and credential handling guidelines
+- **`SECURITY_REPORT.md`** — Security review findings and remediation status
 
-Open <http://localhost:9000>.
+## 🚀 Quick Start
 
-Install Python dependencies with:
+### Prerequisites
+- Python 3.8+
+- Virtual environment (`.venv`)
+- Windows (for PowerShell commands) or adapt to your shell
 
-```powershell
-..\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
+### Installation
 
-## Authorized use only
-
-Run scanners only against systems you own or have explicit permission to test. Use conservative limits and isolated targets for load testing. Do not commit `.env`, credentials, private keys, or target-specific secrets. See [SECURITY.md](SECURITY.md) for the full policy.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/vijayvichu/project_security_tester.git
+   cd project_security_tester
