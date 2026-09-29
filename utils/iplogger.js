@@ -90,7 +90,7 @@ async function getLoggedIPs(db) {
           setTimeout(() => {
             console.warn('Database query timeout, using memory fallback');
             resolve([...memoryIPLog]);
-          }, 5000);
+          }, 1000);
         })
       ]);
     } catch (e) {
@@ -124,7 +124,7 @@ async function clearLoggedIPs(db) {
           setTimeout(() => {
             console.warn('Database clear timeout');
             resolve();
-          }, 5000);
+          }, 1000);
         })
       ]);
     } catch (e) {

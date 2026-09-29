@@ -10,6 +10,24 @@
 
 const axios = require('axios');
 
+// ────────────────────────────────────────────────
+//  Retry helper for network resilience
+// ────────────────────────────────────────────────
+async function fetchWithRetry(url, options = {}, retries = 2) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await axios.get(url, {
+        ...options,
+        timeout: options.timeout || 10000,
+        timeoutErrorMessage: 'Request timeout'
+      });
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Exponential backoff
+    }
+  }
+}
+
 class DDoSVulnerabilityTester {
   constructor(url, options = {}) {
     // Validate URL scheme
@@ -23,8 +41,8 @@ class DDoSVulnerabilityTester {
     const userRequested = options.maxConcurrentRequests || 5;
     this.maxConcurrentRequests = Math.min(userRequested, maxAllowed);
     
-    this.requestDelay = options.requestDelay || 100;
-    this.timeout = options.timeout || 5000;
+    this.requestDelay = options.requestDelay || 250;  // Increased for slow networks
+    this.timeout = options.timeout || 10000;  // Increased for slow networks
     this.results = {
       rateLimiting: null,
       resourceExhaustion: null,
@@ -107,12 +125,8 @@ class DDoSVulnerabilityTester {
 
       const responses = await Promise.all(requests);
       const blockedCount = responses.filter(r => r.blocked).length;
-      const hasRateLimitHeader = responses.some(r => 
-        r.status && r.status > 0 && 
-        (r.status === 429 || r.status === 503 || 
-         (typeof r === 'object' && r.headers && 
-          (r.headers['x-ratelimit-limit'] || r.headers['x-ratelimit-remaining'])))
-      );
+      // Fixed: Simplified detection - if 429 or 503 seen, rate limiting exists
+      const hasRateLimitHeader = responses.some(r => r.status === 429 || r.status === 503);
 
       this.results.rateLimiting = {
         totalRequests: totalRequests,

