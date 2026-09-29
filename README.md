@@ -1,4 +1,4 @@
-# Project Security Tester
+# VULN AI Web Scanner
 
 Project Security Tester is a local security assessment dashboard for authorized testing. It provides controlled DDoS/load testing and SQL injection checks through a FastAPI web interface.
 
