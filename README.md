@@ -1,13 +1,10 @@
 # Project Security Tester
 
-Project Security Tester is a local security assessment toolkit for authorized testing. It combines a Node.js service with a FastAPI dashboard for controlled DDoS/load testing, SQL injection checks, IP logging, preventive guidance, and anomaly detection.
+Project Security Tester is a local security assessment dashboard for authorized testing. It provides controlled DDoS/load testing and SQL injection checks through a FastAPI web interface.
 
 ## Components
 
-- `index.js`: Node.js/Express service with scanning routes, rate limiting, request validation, IP logging, and optional MySQL persistence.
 - `pentest_tool/`: FastAPI dashboard and Python scanners.
-- `ml/anomalydetector.py`: Optional anomaly-detection service.
-- `utils/`: Node.js testing and reporting helpers.
 - `SECURITY.md`: Vulnerability reporting and credential-handling policy.
 - `SECURITY_REPORT.md`: Security review findings and remediation status.
 
@@ -27,17 +24,6 @@ Install Python dependencies with:
 ```powershell
 ..\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
-
-## Run the Node.js service
-
-Install JavaScript dependencies, configure `.env` from `.env.example`, and start the service:
-
-```powershell
-npm install
-npm start
-```
-
-Set `REQUIRE_API_KEY=true` and provide randomly generated `API_KEYS` before exposing the service beyond a trusted local environment.
 
 ## Authorized use only
 

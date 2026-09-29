@@ -23,8 +23,8 @@ Do not include live credentials, personal data, or unauthorized target informati
 ## Credential handling
 
 - Never commit `.env`, API keys, database passwords, session secrets, private keys, or target credentials.
-- Copy `.env.example` to `.env` for local configuration.
-- Generate unique secrets for every environment and set `REQUIRE_API_KEY=true` when the API is exposed beyond a trusted local machine.
+- Keep local configuration outside version control.
+- Add authentication and network controls before exposing the dashboard beyond a trusted local machine.
 - Rotate any secret that may have been exposed, even if it was later removed from the working tree.
 
 ## Safe testing
