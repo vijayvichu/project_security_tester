@@ -1,7 +1,5 @@
 <div align="center">
 
-```
-```
 
 # VulnAI
 ### Web Penetration Testing Dashboard
