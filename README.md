@@ -61,10 +61,10 @@ No fake data. No simulated results. Every request, every payload, every timeout 
 
 ## 🖥️ Dashboard Preview
 
-```
+
 <img width="1863" height="818" alt="image" src="https://github.com/user-attachments/assets/e726cef8-4a49-4ad4-8e62-f2cdcaea7b21" />
 
-```
+
 
 ---
 
