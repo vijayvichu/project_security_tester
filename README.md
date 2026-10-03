@@ -62,21 +62,8 @@ No fake data. No simulated results. Every request, every payload, every timeout 
 ## 🖥️ Dashboard Preview
 
 ```
-┌──────────────────────────────────┬────────────────────────────────┐
-│  ⚡ DDoS STRESS TEST             │  🔍 SQL INJECTION SCANNER      │
-│                                  │                                │
-│  Sent   OK    Failed   Req/s     │  Payloads: 87   Vulns: 2      │
-│  3,241  3,198   43     187/s     │  Forms Found: 2               │
-│                                  │                                │
-│  Overwhelm [████████░░] 76%      │  🚨 CRITICAL · Auth Bypass    │
-│                                  │  Field: password              │
-│  Response Time (ms) ↗            │  Payload: ' OR '1'='1        │
-│  ▁▂▃▄▆▇████████                 │  Evidence: MySQL error found  │
-│                                  │                                │
-│  [0.4s] #242 ✅ HTTP 200 · 11ms │  [23/30] Time-Based · 4012ms  │
-│  [0.4s] #243 ⏱️  TIMEOUT         │  > baseline — VULNERABLE      │
-│  [0.4s] #244 🔴 CONN REFUSED    │  [24/30] UNION · HTTP 200...  │
-└──────────────────────────────────┴────────────────────────────────┘
+<img width="1863" height="818" alt="image" src="https://github.com/user-attachments/assets/e726cef8-4a49-4ad4-8e62-f2cdcaea7b21" />
+
 ```
 
 ---
